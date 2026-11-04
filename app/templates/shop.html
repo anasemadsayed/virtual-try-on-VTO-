@@ -1,0 +1,53 @@
+{% extends "shop_base.html" %}{% block body %}
+<section class="hero">
+ <div>
+  <h1>See it on you before you buy it.</h1>
+  <p class="lead">Choose a piece, upload one photo, and get a realistic look of yourself wearing it in about 30 seconds.</p>
+  <a class="btn" href="#collection">Browse the collection</a>
+ </div>
+ {% if products|length >= 3 %}
+ <div class="collage" aria-hidden="true">
+  {% for p in products[:3] %}<img src="/media/{{p.image}}" alt="">{% endfor %}
+  <span class="tag">Now try it on you</span>
+ </div>
+ {% endif %}
+</section>
+
+<section class="facts">
+ <div><b>One photo</b><span>No app, no sign-up, no measuring tape.</span></div>
+ <div><b>About 30 seconds</b><span>Your look is generated while you browse.</span></div>
+ <div><b>Fewer returns</b><span>Customers see the fit before they order.</span></div>
+</section>
+
+<section id="collection">
+ <div class="head">
+  <h2>The collection</h2>
+  <div class="chips" id="chips"></div>
+ </div>
+ {% if not products %}<p class="empty">No clothes yet. Add some in <a href="/admin#products">the admin page</a>.</p>{% endif %}
+ <div class="grid">{% for p in products %}
+  <a class="tile" href="/p/{{p.id}}" data-cat="{{p.category or ''}}">
+   <div class="ph"><img src="/media/{{p.image}}" alt="{{p.name}}" loading="lazy"><span class="go">Try it on</span></div>
+   <strong>{{p.name}}</strong><small>{{p.category or ''}}</small>
+  </a>{% endfor %}
+ </div>
+</section>
+
+<script>
+(function(){
+ const tiles=[...document.querySelectorAll('.tile')];
+ const cats=[...new Set(tiles.map(t=>t.dataset.cat).filter(Boolean))];
+ const box=document.getElementById('chips');
+ if(cats.length<2)return;
+ ['All',...cats].forEach((c,i)=>{
+  const b=document.createElement('button');
+  b.className='chip';b.textContent=c;b.setAttribute('aria-pressed',i===0);
+  b.onclick=()=>{
+   box.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',x===b));
+   tiles.forEach(t=>t.style.display=(i===0||t.dataset.cat===c)?'':'none');
+  };
+  box.appendChild(b);
+ });
+})();
+</script>
+{% endblock %}

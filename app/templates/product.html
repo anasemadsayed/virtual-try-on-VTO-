@@ -1,0 +1,90 @@
+{% extends "shop_base.html" %}{% block title %}{{p.name}}{% endblock %}{% block body %}
+<a class="back" href="/">Back to the collection</a>
+<div class="two">
+ <div class="item"><img src="/media/{{p.image}}" alt="{{p.name}}">{% if p.credit %}<p class="note">{{p.credit}}</p>{% endif %}</div>
+ <div class="panel">
+  <span class="cat">{{p.category or ''}}</span>
+  <h1>{{p.name}}</h1>
+  <span class="left">You have {{left}} try-on{{'' if left==1 else 's'}} left</span>
+
+  <form id="f">
+   <input type="hidden" name="product_id" value="{{p.id}}">
+   <label class="dz" id="dz">
+    <input type="file" name="photo" id="photo" accept="image/*" required>
+    <img id="prev" alt="Your photo">
+    <span class="hint"><b>Add your photo</b><span>Drop it here or tap to choose. JPG or PNG, under 10 MB.</span></span>
+   </label>
+   <p class="note tips">Best results: face visible, facing forward, standing, shoulders in frame.</p>
+   <label class="consent"><input type="checkbox" id="consent" required> <span>I agree that my photo is sent to Perfect Corp for processing and stored by this test store.</span></label>
+   <button class="btn wide" id="go" {{'disabled' if left==0}}>Try it on</button>
+  </form>
+
+  <div class="spin" id="spin"><b>Creating your look</b><br><span class="note">This usually takes 10 to 30 seconds. <span id="t">0</span>s</span><div class="bar"><i></i></div></div>
+  <p class="err" id="err"></p>
+
+  <div id="res">
+   <div class="cmp" id="box">
+    <img id="out" alt="Your try-on result">
+    <img id="orig" alt="Your original photo">
+    <span class="knob" id="knob"></span>
+    <span class="lab l1">Before</span><span class="lab l2">After</span>
+    <input type="range" id="cmp" min="0" max="100" value="50" aria-label="Compare before and after">
+   </div>
+   <p class="note" id="took"></p>
+   <div class="fb">
+    <p>Does this look right?</p>
+    <button class="ghost" data-r="1">Yes, good</button> <button class="ghost" data-r="-1">No, off</button>
+    <div class="cm"><input id="cm" placeholder="Comment (optional)"><button class="ghost" id="send">Send comment</button></div>
+    <p class="note" id="thx"></p>
+   </div>
+  </div>
+ </div>
+</div>
+
+<script>
+let tid=null,rating=null;
+const $=id=>document.getElementById(id);
+
+function setCmp(v){$('orig').style.clipPath='inset(0 '+(100-v)+'% 0 0)';$('knob').style.left=v+'%';$('cmp').value=v}
+$('cmp').oninput=e=>setCmp(e.target.value);
+function reveal(){ /* sweeps from the original photo to the result once */
+ let v=100;setCmp(v);
+ const step=()=>{v-=2.2;if(v<=50){setCmp(50);return}setCmp(v);requestAnimationFrame(step)};
+ setTimeout(()=>requestAnimationFrame(step),350);
+}
+
+$('photo').onchange=()=>{
+ const f=$('photo').files[0];if(!f)return;
+ const u=URL.createObjectURL(f);$('prev').src=u;$('orig').src=u;$('dz').classList.add('has');
+};
+['dragenter','dragover'].forEach(n=>$('dz').addEventListener(n,()=>$('dz').classList.add('drag')));
+['dragleave','drop'].forEach(n=>$('dz').addEventListener(n,()=>$('dz').classList.remove('drag')));
+
+$('f').onsubmit=async e=>{
+ e.preventDefault();$('err').textContent='';$('res').style.display='none';
+ $('go').disabled=true;$('spin').classList.add('on');
+ let s=0;$('t').textContent=0;const iv=setInterval(()=>$('t').textContent=++s,1000);
+ try{
+  const r=await fetch('/api/tryon',{method:'POST',body:new FormData($('f'))});
+  const j=await r.json();
+  if(!r.ok)throw new Error(j.error||'Something went wrong');
+  tid=j.id;rating=null;
+  document.querySelectorAll('[data-r]').forEach(b=>b.classList.remove('sel'));
+  $('out').onload=()=>{$('res').style.display='block';reveal();$('res').scrollIntoView({behavior:'smooth',block:'start'})};
+  $('out').src=j.result;$('took').textContent='Done in '+j.seconds+' seconds.';$('thx').textContent='';
+ }catch(x){$('err').textContent=x.message}
+ clearInterval(iv);$('spin').classList.remove('on');$('go').disabled=false;
+};
+
+async function fb(){
+ const b=new FormData();b.append('tryon_id',tid);b.append('rating',rating||1);b.append('comment',$('cm').value);
+ const r=await fetch('/api/feedback',{method:'POST',body:b});
+ $('thx').textContent=r.ok?'Thanks, feedback saved.':'Could not save feedback.';
+}
+document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{
+ rating=+b.dataset.r;
+ document.querySelectorAll('[data-r]').forEach(x=>x.classList.toggle('sel',x===b));
+ fb();
+});
+$('send').onclick=()=>{if(!rating){$('thx').textContent='Choose Yes or No first.';return}fb()};
+</script>{% endblock %}

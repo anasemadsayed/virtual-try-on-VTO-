@@ -1,0 +1,57 @@
+{% extends "base.html" %}{% block title %}Admin{% endblock %}{% block body %}
+<h1>Dashboard</h1>
+<a class="btn" href="/admin/export.csv">Download CSV</a>
+<div class="stats">
+ <div class="stat"><b>{{stats.total}}</b><small>try-ons</small></div>
+ <div class="stat"><b>{{stats.today}}</b><small>today</small></div>
+ <div class="stat"><b>{{stats.visitors}}</b><small>visitors</small></div>
+ <div class="stat"><b>{{stats.success}}</b><small>succeeded</small></div>
+ <div class="stat"><b>{{stats.errors}}</b><small>failed</small></div>
+ <div class="stat"><b>{{stats.avg}}s</b><small>average time</small></div>
+ <div class="stat"><b>{{stats.max}}s</b><small>slowest</small></div>
+ <div class="stat"><b>{{stats.up}} / {{stats.down}}</b><small>good / off</small></div>
+</div>
+
+<h2>All try-ons</h2>
+<div class="wrap"><table><tr><th>#</th><th>When (UTC)</th><th>Visitor</th><th>Photo</th><th>Product</th><th>Result</th><th>Status</th><th>Seconds</th><th>Feedback</th></tr>
+{% for r in rows %}<tr>
+ <td>{{r.id}}</td><td>{{r.created}}</td><td>{{r.visitor}}<br><span class="note">{{r.ip}}</span></td>
+ <td><a href="/media/{{r.person_img}}" target="_blank"><img src="/media/{{r.person_img}}" alt=""></a></td>
+ <td>{{r.product_name}}<br><span class="note">{{r.category}}</span></td>
+ <td>{% if r.result_img %}<a href="/media/{{r.result_img}}" target="_blank"><img src="/media/{{r.result_img}}" alt=""></a>{% endif %}</td>
+ <td class="{{'ok' if r.status=='success' else 'bad'}}">{{r.status}}{% if r.error %}<br><span class="note">{{r.error}}</span>{% endif %}</td>
+ <td>{{r.seconds}}</td>
+ <td>{% if r.rating==1 %}<b class="ok">Good</b>{% elif r.rating==-1 %}<b class="bad">Off</b>{% else %}-{% endif %}<br>{{r.comment or ''}}</td>
+</tr>{% endfor %}</table></div>
+
+<h2>Usage per visitor</h2>
+<div class="wrap"><table><tr><th>Visitor</th><th>Try-ons</th><th>Succeeded</th><th>Avg seconds</th><th>First</th><th>Last</th><th>IP</th></tr>
+{% for v in visitors %}<tr><td>{{v.visitor}}</td><td>{{v.n}}</td><td>{{v.ok}}</td><td>{{v.avg}}</td><td>{{v.first}}</td><td>{{v.last}}</td><td>{{v.ip}}</td></tr>{% endfor %}</table></div>
+
+<h2>Most tried products</h2>
+<div class="wrap"><table><tr><th>Product</th><th>Try-ons</th><th>Good</th><th>Off</th></tr>
+{% for t in top %}<tr><td>{{t.name}}</td><td>{{t.n}}</td><td>{{t.up or 0}}</td><td>{{t.down or 0}}</td></tr>{% endfor %}</table></div>
+
+{% if errs %}<h2>Errors</h2><div class="wrap"><table><tr><th>Error</th><th>Count</th></tr>
+{% for e in errs %}<tr><td>{{e.e}}</td><td>{{e.n}}</td></tr>{% endfor %}</table></div>{% endif %}
+
+<h2 id="products">Products</h2>
+<form class="inline" action="/admin/product" method="post" enctype="multipart/form-data">
+ <input name="name" placeholder="Name" required>
+ <select name="category">{% for c in cats %}<option>{{c}}</option>{% endfor %}</select>
+ <input name="url" placeholder="Image URL (or choose a file)">
+ <input type="file" name="file" accept="image/*">
+ <button>Add product</button></form>
+ <form class="inline" action="/admin/import-sample" method="post">
+ <select name="group">{% for g in samples %}<option>{{g}}</option>{% endfor %}</select>
+ <button>Import sample clothes (no key needed)</button></form>
+{% if pexels %}<form class="inline" action="/admin/import" method="post">
+ <input name="query" placeholder="Search Pexels, e.g. white t-shirt" required>
+ <select name="category">{% for c in cats %}<option>{{c}}</option>{% endfor %}</select>
+ <input name="count" type="number" value="8" min="1" max="30" style="width:70px">
+ <button>Import from Pexels</button></form>
+{% endif %}
+<div class="wrap"><table>{% for p in products %}<tr>
+ <td><img src="/media/{{p.image}}" alt=""></td><td>{{p.name}}<br><span class="note">{{p.category}} {{p.credit or ''}}</span></td>
+ <td><form action="/admin/product/{{p.id}}/delete" method="post"><button class="ghost">Delete</button></form></td></tr>{% endfor %}</table></div>
+{% endblock %}
